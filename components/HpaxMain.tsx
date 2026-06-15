@@ -178,7 +178,7 @@ export default function HpaxMain({ profile, firebaseUser, initialMessages }: Pro
 /* ── Menu panel overlay ── */
 function MenuPanelOverlay({ panel, profile, myCount, lang, onClose }:
   { panel: MenuPanel; profile: Profile; myCount: number; lang: Lang; onClose: () => void }) {
-  const t = T[lang]
+  const t = T[lang] as typeof T['en']
   const titles: Record<NonNullable<MenuPanel>, string> = {
     about: t.aboutTitle, how: t.menuHow, account: t.menuAccount, terms: t.menuTerms,
   }
