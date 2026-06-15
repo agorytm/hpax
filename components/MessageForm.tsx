@@ -125,7 +125,8 @@ export default function MessageForm({ slotCount, displayName, firebaseUser, onPo
         <ShareModal
           open
           onClose={() => setShareMsg(null)}
-          message={shareMsg}
+          content={shareMsg.content}
+          slotNumber={shareMsg.slotNumber}
           displayName={displayName}
         />
       )}
