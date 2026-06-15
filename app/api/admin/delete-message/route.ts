@@ -3,6 +3,8 @@ import { getAdminDb, getAdminAuth } from '@/lib/firebase/admin'
 import { FieldValue } from 'firebase-admin/firestore'
 import { createHash } from 'crypto'
 
+export const dynamic = 'force-dynamic'
+
 function sha256(s: string) {
   return createHash('sha256').update(s).digest('hex')
 }
