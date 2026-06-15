@@ -1,9 +1,9 @@
 'use client'
-import { useState }       from 'react'
-import type { User }      from 'firebase/auth'
-import ShareModal         from './ShareModal'
-import type { Message }   from '@/lib/types'
-import { T, type Lang }   from '@/lib/translations'
+import { useState } from 'react'
+import type { User } from 'firebase/auth'
+import ShareModal from './ShareModal'
+import type { Message } from '@/lib/types'
+import { T, type Lang } from '@/lib/translations'
 
 const MAX_WORDS = 100
 function countWords(text: string): number {
@@ -11,18 +11,18 @@ function countWords(text: string): number {
 }
 
 interface Props {
-  slotCount:    number
-  displayName:  string
+  slotCount: number
+  displayName: string
   firebaseUser: User
-  onPosted:     (msg: Message) => void
-  lang?:        Lang
+  onPosted: (msg: Message) => void
+  lang?: Lang
 }
 
 export default function MessageForm({ slotCount, displayName, firebaseUser, onPosted, lang = 'fr' }: Props) {
   const t = T[lang]
-  const [content,  setContent]  = useState('')
-  const [loading,  setLoading]  = useState(false)
-  const [error,    setError]    = useState<string | null>(null)
+  const [content, setContent] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [shareMsg, setShareMsg] = useState<Message | null>(null)
 
   const wordCount = countWords(content)
@@ -37,10 +37,10 @@ export default function MessageForm({ slotCount, displayName, firebaseUser, onPo
     setError(null)
     try {
       const token = await firebaseUser.getIdToken()
-      const res   = await fetch('/api/messages', {
-        method:  'POST',
+      const res = await fetch('/api/messages', {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body:    JSON.stringify({ content: content.trim() }),
+        body: JSON.stringify({ content: content.trim() }),
       })
       if (!res.ok) {
         const j = await res.json().catch(() => ({}))
@@ -66,8 +66,9 @@ export default function MessageForm({ slotCount, displayName, firebaseUser, onPo
           onChange={e => setContent(e.target.value)}
           placeholder={t.placeholder}
           rows={1}
-          className="w-full font-mono text-[#111] text-[12px] bg-white outline-none resize-none placeholder-[#bbb] caret-black"
+          className="w-full font-mono text-[#111] text-[12px] outline-none resize-none placeholder-[#bbb] caret-black"
           style={{
+            background: 'white',
             border: `0.5px solid ${overLimit ? '#f55' : '#ddd'}`,
             borderRadius: '6px',
             padding: '16px',
@@ -88,7 +89,7 @@ export default function MessageForm({ slotCount, displayName, firebaseUser, onPo
           className="w-full font-serif font-bold text-white transition-all hover:bg-white hover:text-[#0a0a0a] disabled:opacity-30 disabled:cursor-not-allowed"
           style={{ border: '0.5px solid #fff', borderRadius: '6px', fontSize: '16px', padding: '17px' }}
         >
-          {loading ? '…' : t.button}
+          {loading ? '\u2026' : t.button}
         </button>
       </form>
 
