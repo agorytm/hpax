@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAdminDb, getAdminAuth } from '@/lib/firebase/admin'
 
+export const dynamic = 'force-dynamic'
+
 /**
  * POST /api/admin/set-verified
  * Body: { userId, verified: boolean }
