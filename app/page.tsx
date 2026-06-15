@@ -85,33 +85,39 @@ export default function HomePage() {
   if (appState === 'app' && profile && firebaseUser) {
     return (
       <main className="min-h-screen flex items-center justify-center bg-[#1a1a1a]">
-        <div className="relative bg-[#0a0a0a] text-white overflow-hidden w-full h-screen md:w-[360px] md:h-[740px] md:rounded-[36px] md:border md:border-[#333]">
+        <div className="relative bg-[#0a0a0a] text-white overflow-hidden w-full h-screen md:w-[360px] md:h-[740px] md:rounded-[36px] md:border md:border-[#333]" style={{ borderWidth: '0.5px' }}>
           <HpaxMain profile={profile} firebaseUser={firebaseUser} initialMessages={messages} />
         </div>
       </main>
     )
   }
 
-  /* ── Public (not logged in) — same layout as mockup ── */
+  /* ── Public (not logged in) — exact mockup layout ── */
   const feedPreview = messages.slice(0, 3)
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-[#1a1a1a]">
-      <div className="relative bg-[#0a0a0a] text-white overflow-hidden w-full h-screen md:w-[360px] md:h-[740px] md:rounded-[36px] md:border md:border-[#333]">
+      <div
+        className="relative bg-[#0a0a0a] text-white overflow-hidden w-full h-screen md:w-[360px] md:h-[740px] md:rounded-[36px] md:border md:border-[#333]"
+        style={{ borderWidth: '0.5px' }}
+      >
         <div className="flex flex-col items-center h-full pt-10 px-7 overflow-y-auto">
 
-          {/* Top bar */}
+          {/* Top bar — hamburger links to /join */}
           <div className="w-full relative flex items-center justify-center mb-9 shrink-0">
             <span className="font-mono text-[13px] tracking-[0.3em] text-[#666]">HPAX</span>
             <Link
               href="/join"
-              className="absolute right-0 font-mono text-[10px] text-[#555] hover:text-[#888] transition-colors tracking-[0.12em] uppercase"
+              className="absolute right-0 top-1/2 -translate-y-1/2 flex flex-col gap-1 p-1 group"
+              aria-label="Join"
             >
-              Join
+              <span className="block w-[18px] h-px bg-[#444] group-hover:bg-[#777] transition-colors" />
+              <span className="block w-[18px] h-px bg-[#444] group-hover:bg-[#777] transition-colors" />
+              <span className="block w-[18px] h-px bg-[#444] group-hover:bg-[#777] transition-colors" />
             </Link>
           </div>
 
-          {/* Counter — shows 100/100 for guests */}
+          {/* Counter — 100/100 for guests */}
           <div className="flex flex-col items-center mb-10 leading-none shrink-0">
             <div
               className="font-serif font-bold text-white"
@@ -125,19 +131,30 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* CTA */}
+          {/* Fake input — click goes to /join */}
+          <Link href="/join" className="w-full mb-[14px] block">
+            <div
+              className="w-full font-mono text-[12px] text-[#444] rounded-[6px] px-4 py-4 cursor-text"
+              style={{ border: '0.5px solid #333' }}
+            >
+              Say something that matters.
+            </div>
+          </Link>
+
+          {/* Button */}
           <Link
             href="/join"
-            className="w-full border border-white rounded-[6px] text-white font-serif text-[16px] font-bold py-[17px] mb-[30px] text-center block transition-all hover:bg-white hover:text-[#0a0a0a]"
+            className="w-full rounded-[6px] text-white font-serif text-[16px] font-bold py-[17px] mb-[30px] text-center block transition-all hover:bg-white hover:text-[#0a0a0a]"
+            style={{ border: '0.5px solid #fff' }}
           >
-            Say something that matters.
+            I have said.
           </Link>
 
           {/* Feed preview — click to expand */}
           <div className="w-full cursor-pointer" onClick={() => setOverlayOpen(true)}>
             {feedPreview.map(msg => (
               <div key={msg.id} className="flex items-baseline gap-3 py-3 border-b border-[#1a1a1a]">
-                <div className="font-mono text-[10px] text-[#555] min-w-[46px] shrink-0">
+                <div className="font-mono text-[10px] text-[#555] min-w-[46px] shrink-0" style={{ borderColor: '#1a1a1a' }}>
                   <span className="text-[#999]">{msg.slotNumber}</span>/100
                 </div>
                 <div className="flex flex-col gap-[3px]">
