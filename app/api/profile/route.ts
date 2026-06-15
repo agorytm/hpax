@@ -8,6 +8,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAdminDb, getAdminAuth } from '@/lib/firebase/admin'
 import { FieldValue }         from 'firebase-admin/firestore'
 
+export const dynamic = 'force-dynamic'
+
 export async function POST(req: NextRequest) {
   // ── 1. Auth ──────────────────────────────────────────────
   const authHeader = req.headers.get('Authorization') ?? ''
