@@ -12,6 +12,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAdminDb, getAdminAuth } from '@/lib/firebase/admin'
 import { FieldValue }         from 'firebase-admin/firestore'
 
+export const dynamic = 'force-dynamic'
+
 const MAX_WORDS = 100
 
 function countWords(text: string): number {
