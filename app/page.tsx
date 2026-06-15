@@ -156,7 +156,13 @@ export default function HomePage() {
                 {panel === 'about' && (
                   <div>
                     <h2 className="font-serif font-bold text-white text-[20px] mb-6">{t.aboutTitle}</h2>
-                    <p className="font-mono text-[11px] text-[#555] leading-relaxed">{t.aboutBody}</p>
+                    <div className="space-y-4">
+                      <p className="font-mono text-[11px] text-[#555] leading-relaxed italic">{t.aboutQuote}</p>
+                      <p className="font-mono text-[11px] text-[#555] leading-relaxed">{t.aboutP1}</p>
+                      <p className="font-mono text-[11px] text-[#555] leading-relaxed">{t.aboutP2}</p>
+                      <p className="font-mono text-[11px] text-[#555] leading-relaxed">{t.aboutP3}</p>
+                      <p className="font-mono text-[10px] text-[#333] leading-relaxed mt-6">{t.aboutFooter}</p>
+                    </div>
                   </div>
                 )}
                 {panel === 'how' && (
