@@ -68,7 +68,7 @@ export default function MessageForm({ slotCount, displayName, firebaseUser, onPo
           rows={1}
           className="w-full font-mono text-[#111] text-[12px] bg-white outline-none resize-none placeholder-[#bbb] caret-black"
           style={{
-                        border: `0.5px solid ${overLimit ? '#f55' : '#ddd'}`,
+            border: `0.5px solid ${overLimit ? '#f55' : '#ddd'}`,
             borderRadius: '6px',
             padding: '16px',
             marginBottom: '14px',
@@ -94,6 +94,7 @@ export default function MessageForm({ slotCount, displayName, firebaseUser, onPo
 
       {shareMsg && (
         <ShareModal
+          open={true}
           content={shareMsg.content}
           slotNumber={shareMsg.slotNumber}
           displayName={displayName}
