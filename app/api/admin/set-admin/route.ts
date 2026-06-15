@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAdminDb, getAdminAuth } from '@/lib/firebase/admin'
 import { createHash } from 'crypto'
 
+export const dynamic = 'force-dynamic'
+
 /**
  * POST /api/admin/set-admin
  * Body: { userId, masterKey }
