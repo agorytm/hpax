@@ -28,7 +28,6 @@ export default function MessageForm({ slotCount, displayName, firebaseUser, onPo
   const wordCount = countWords(content)
   const overLimit = wordCount > MAX_WORDS
 
-  // Disparaît silencieusement après 100 messages
   if (slotCount >= 100) return null
 
   async function handleSubmit(e: React.FormEvent) {
@@ -39,7 +38,6 @@ export default function MessageForm({ slotCount, displayName, firebaseUser, onPo
     setLoading(true)
     setError(null)
 
-    // Récupère le token frais (auto-renouvelé par Firebase si expiré)
     const idToken = await firebaseUser.getIdToken()
 
     const res = await fetch('/api/post', {
@@ -57,7 +55,7 @@ export default function MessageForm({ slotCount, displayName, firebaseUser, onPo
 
     if (!res.ok) {
       const code = json.error as string
-      if (code === 'LIMIT_REACHED')  setError('You have said your 100 things.')
+      if (code === 'LIMIT_REACHED')       setError('You have said your 100 things.')
       else if (code === 'TOO_MANY_WORDS') setError('100 words max.')
       else if (code === 'RATE_LIMITED')   setError('Wait a moment before posting again.')
       else setError('Something went wrong. Try again.')
@@ -92,7 +90,6 @@ export default function MessageForm({ slotCount, displayName, firebaseUser, onPo
             `}
             disabled={loading}
           />
-          {/* Compteur de mots live */}
           <div
             className={`
               absolute bottom-3 right-4 font-mono text-[10px] transition-colors
@@ -120,11 +117,18 @@ export default function MessageForm({ slotCount, displayName, firebaseUser, onPo
             disabled:opacity-30 disabled:cursor-not-allowed
           "
         >
-          {loading ? '…' : 'I have said.'}
+          {loading ? '...' : 'I have said.'}
         </button>
       </form>
 
       {shareMsg && (
         <ShareModal
           open
-          onClose={() => setShareMsg(nul
+          onClose={() => setShareMsg(null)}
+          message={shareMsg}
+          displayName={displayName}
+        />
+      )}
+    </>
+  )
+}

@@ -1,10 +1,9 @@
 'use client'
 
-import { useState }      from 'react'
-import { useRouter }     from 'next/navigation'
-import { onAuthStateChanged } from 'firebase/auth'
-import { auth }          from '@/lib/firebase/client'
-import { useEffect }     from 'react'
+import { useState, useEffect } from 'react'
+import { useRouter }           from 'next/navigation'
+import { onAuthStateChanged }  from 'firebase/auth'
+import { auth }                from '@/lib/firebase/client'
 
 export default function JoinNamePage() {
   const [firstName, setFirstName] = useState('')
@@ -14,7 +13,6 @@ export default function JoinNamePage() {
   const [idToken,   setIdToken]   = useState<string | null>(null)
   const router = useRouter()
 
-  // Récupère le token Firebase dès que l'auth est prête
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async user => {
       if (!user) {
@@ -65,7 +63,7 @@ export default function JoinNamePage() {
         </p>
         <form onSubmit={handleCreate} className="flex flex-col gap-4">
           <p className="text-[#555] font-mono text-[11px] tracking-[0.12em] uppercase mb-2">
-            Your name — permanent, choose carefully.
+            Your name -- permanent, choose carefully.
           </p>
           <input
             type="text"
@@ -93,4 +91,11 @@ export default function JoinNamePage() {
             type="submit"
             disabled={loading || !firstName.trim() || !lastName.trim() || !idToken}
             className="w-full border border-white rounded-[6px] text-white font-serif text-[16px] font-bold py-4 mt-2 transition-all hover:bg-white hover:text-[#0a0a0a] disabled:opacity-30 disabled:cursor-not-allowed"
-       
+          >
+            {loading ? 'Creating...' : 'This is my name.'}
+          </button>
+        </form>
+      </div>
+    </main>
+  )
+}

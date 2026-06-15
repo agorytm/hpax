@@ -23,16 +23,11 @@ export default function JoinPage() {
 
     try {
       await sendSignInLinkToEmail(auth, email.trim().toLowerCase(), {
-        // Firebase redirigera vers cette URL après le clic sur le lien
         url:             `${siteUrl}/auth/finish`,
         handleCodeInApp: true,
       })
-
-      // Sauvegarde l'email pour le retrouver sur la page /auth/finish
-      // (même appareil) ou pour afficher un message utile
       window.localStorage.setItem('hpax_email_for_sign_in', email.trim().toLowerCase())
       setStep('sent')
-
     } catch (err: unknown) {
       console.error(err)
       setError('Something went wrong. Try again.')
@@ -44,7 +39,6 @@ export default function JoinPage() {
   return (
     <main className="min-h-screen flex items-center justify-center px-6 bg-[#1a1a1a]">
       <div className="w-full max-w-[360px]">
-
         <p className="font-mono text-[13px] tracking-[0.3em] text-[#666] text-center mb-16">
           HPAX
         </p>
@@ -72,7 +66,7 @@ export default function JoinPage() {
               disabled={loading || !email.trim()}
               className="w-full border border-white rounded-[6px] text-white font-serif text-[16px] font-bold py-4 transition-all hover:bg-white hover:text-[#0a0a0a] disabled:opacity-30 disabled:cursor-not-allowed"
             >
-              {loading ? 'Sending…' : 'Continue'}
+              {loading ? 'Sending...' : 'Continue'}
             </button>
           </form>
         ) : (
@@ -84,4 +78,15 @@ export default function JoinPage() {
               We sent a link to{' '}
               <span className="text-[#888]">{email}</span>
             </p>
-      
+            <button
+              onClick={() => { setStep('email'); setEmail('') }}
+              className="mt-10 text-[#444] font-mono text-[11px] hover:text-[#666] transition-colors"
+            >
+              Use a different email
+            </button>
+          </div>
+        )}
+      </div>
+    </main>
+  )
+}
