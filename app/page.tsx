@@ -1,16 +1,16 @@
 'use client'
 export const dynamic = 'force-dynamic'
 
-import { useEffect, useState }       from 'react'
-import { useRouter }                 from 'next/navigation'
-import { onAuthStateChanged, User }  from 'firebase/auth'
-import { collection, query, orderBy, limit, getDocs, doc, getDoc, onSnapshot, DocumentData } from 'firebase/firestore'
-import { auth, db }                  from '@/lib/firebase/client'
-import HpaxMain                      from '@/components/HpaxMain'
-import FeedOverlay                   from '@/components/FeedOverlay'
-import type { Message, Profile }     from '@/lib/types'
-import { T, type Lang }              from '@/lib/translations'
-import Link                          from 'next/link'
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { onAuthStateChanged, User } from 'firebase/auth'
+import { collection, query, orderBy, limit, getDocs, onSnapshot, DocumentData } from 'firebase/firestore'
+import { auth, db } from '@/lib/firebase/client'
+import HpaxMain from '@/components/HpaxMain'
+import FeedOverlay from '@/components/FeedOverlay'
+import type { Message, Profile } from '@/lib/types'
+import { T, type Lang } from '@/lib/translations'
+import Link from 'next/link'
 
 type AppState = 'loading' | 'public' | 'app'
 type MenuPanel = null | 'about' | 'how' | 'terms'
@@ -24,14 +24,14 @@ function getLang(): Lang {
 }
 
 export default function HomePage() {
-  const [appState,     setAppState]     = useState<AppState>('loading')
-  const [profile,      setProfile]      = useState<Profile | null>(null)
-  const [messages,     setMessages]     = useState<Message[]>([])
+  const [appState, setAppState] = useState<AppState>('loading')
+  const [profile, setProfile] = useState<Profile | null>(null)
+  const [messages, setMessages] = useState<Message[]>([])
   const [firebaseUser, setFirebaseUser] = useState<User | null>(null)
-  const [overlayOpen,  setOverlayOpen]  = useState(false)
-  const [lang,         setLang]         = useState<Lang>('fr')
-  const [menuOpen,     setMenuOpen]     = useState(false)
-  const [panel,        setPanel]        = useState<MenuPanel>(null)
+  const [overlayOpen, setOverlayOpen] = useState(false)
+  const [lang, setLang] = useState<Lang>('fr')
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [panel, setPanel] = useState<MenuPanel>(null)
   const router = useRouter()
 
   useEffect(() => { setLang(getLang()) }, [])
@@ -53,10 +53,12 @@ export default function HomePage() {
         setAppState('public')
         return
       }
-      const profileSnap = await getDoc(doc(db, 'profiles', fireUser.uid))
-      if (!profileSnap.exists()) { router.replace('/join/name'); return }
-      const pd = profileSnap.data()!
-      setProfile({ id: fireUser.uid, displayName: pd.displayName, verified: pd.verified ?? false, messageCount: pd.messageCount ?? 0, createdAt: pd.createdAt ?? null })
+      // Use /api/me (Admin SDK) — reliable profile check, bypasses Firestore client rules
+      const token = await fireUser.getIdToken()
+      const meRes = await fetch('/api/me', { headers: { 'Authorization': `Bearer ${token}` } })
+      const { profile: pd } = await meRes.json().catch(() => ({ profile: null }))
+      if (!pd) { router.replace('/join/name'); return }
+      setProfile(pd)
       setAppState('app')
     })
     return () => unsub()
@@ -85,7 +87,7 @@ export default function HomePage() {
   const feedPreview = messages.slice(0, 3)
   const sections: { key: MenuPanel; label: string }[] = [
     { key: 'about', label: t.menuAbout },
-    { key: 'how',   label: t.menuHow },
+    { key: 'how', label: t.menuHow },
     { key: 'terms', label: t.menuTerms },
   ]
 
@@ -108,8 +110,10 @@ export default function HomePage() {
             <div className="font-serif text-[#555]" style={{ fontSize: '30px', letterSpacing: '-1px' }}>100</div>
           </div>
 
+          {/* White fake textarea — clicking goes to /join */}
           <Link href="/join" className="w-full mb-[14px] block">
-            <div className="w-full font-mono text-[12px] text-[#444] rounded-[6px] px-4 py-4 cursor-text" style={{ border: '0.5px solid #333' }}>
+            <div className="w-full font-mono text-[12px] rounded-[6px] px-4 py-4 cursor-text"
+              style={{ background: 'white', border: '0.5px solid #ddd', color: '#bbb', minHeight: '54px' }}>
               {t.placeholder}
             </div>
           </Link>
@@ -142,15 +146,11 @@ export default function HomePage() {
           <div className="absolute inset-0 z-40 flex flex-col bg-[#0a0a0a]">
             <div className="flex items-center justify-between px-7 pt-10 pb-6 shrink-0">
               <span className="font-mono text-[13px] text-[#666]" style={{ letterSpacing: '0.3em' }}>HPAX</span>
-              <button onClick={() => { setMenuOpen(false); setPanel(null) }}
-                className="font-mono text-[20px] text-[#555] hover:text-white transition-colors leading-none">
-                &times;
-              </button>
+              <button onClick={() => { setMenuOpen(false); setPanel(null) }} className="font-mono text-[20px] text-[#555] hover:text-white transition-colors leading-none">&times;</button>
             </div>
             {panel ? (
               <div className="flex-1 overflow-y-auto px-7 pb-10">
-                <button onClick={() => setPanel(null)}
-                  className="font-mono text-[10px] text-[#444] uppercase tracking-[0.15em] mb-8 flex items-center gap-2 hover:text-[#888] transition-colors">
+                <button onClick={() => setPanel(null)} className="font-mono text-[10px] text-[#444] uppercase tracking-[0.15em] mb-8 flex items-center gap-2 hover:text-[#888] transition-colors">
                   &larr; {lang === 'fr' ? 'retour' : 'back'}
                 </button>
                 {panel === 'about' && (
@@ -198,13 +198,10 @@ export default function HomePage() {
                     {s.label}
                   </button>
                 ))}
-                <Link href="/join"
-                  className="py-5 font-serif font-bold text-white text-[18px] hover:text-[#aaa] transition-colors block"
-                  style={{ borderBottom: '0.5px solid #1a1a1a' }}>
+                <Link href="/join" className="py-5 font-serif font-bold text-white text-[18px] hover:text-[#aaa] transition-colors block" style={{ borderBottom: '0.5px solid #1a1a1a' }}>
                   {lang === 'fr' ? 'Se connecter' : 'Sign in'}
                 </Link>
-                <button onClick={toggleLang}
-                  className="text-left py-5 font-mono text-[11px] text-[#555] uppercase tracking-[0.15em] hover:text-[#888] transition-colors mt-auto">
+                <button onClick={toggleLang} className="text-left py-5 font-mono text-[11px] text-[#555] uppercase tracking-[0.15em] hover:text-[#888] transition-colors mt-auto">
                   {t.menuLanguage}
                 </button>
               </nav>
