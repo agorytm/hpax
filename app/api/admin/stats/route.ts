@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAdminDb, getAdminAuth } from '@/lib/firebase/admin'
 
+export const dynamic = 'force-dynamic'
+
 /**
  * GET /api/admin/stats
  * Returns: total users, total messages, messages last 24h, last 7d
