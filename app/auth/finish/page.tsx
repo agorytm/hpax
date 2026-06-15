@@ -1,5 +1,7 @@
 'use client'
 
+export const dynamic = 'force-dynamic'
+
 // /auth/finish — page vers laquelle Firebase redirige après clic sur le magic link.
 // Cette page finalise la connexion et redirige vers l'app ou l'onboarding nom.
 
