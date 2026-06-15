@@ -1,12 +1,11 @@
 'use client'
-
-import { useState } from 'react'
-import type { User } from 'firebase/auth'
-import ShareModal   from './ShareModal'
-import type { Message } from '@/lib/types'
+import { useState }       from 'react'
+import type { User }      from 'firebase/auth'
+import ShareModal         from './ShareModal'
+import type { Message }   from '@/lib/types'
+import { T, type Lang }   from '@/lib/translations'
 
 const MAX_WORDS = 100
-
 function countWords(text: string): number {
   return text.trim().split(/\s+/).filter(Boolean).length
 }
@@ -16,9 +15,11 @@ interface Props {
   displayName:  string
   firebaseUser: User
   onPosted:     (msg: Message) => void
+  lang?:        Lang
 }
 
-export default function MessageForm({ slotCount, displayName, firebaseUser, onPosted }: Props) {
+export default function MessageForm({ slotCount, displayName, firebaseUser, onPosted, lang = 'fr' }: Props) {
+  const t = T[lang]
   const [content,  setContent]  = useState('')
   const [loading,  setLoading]  = useState(false)
   const [error,    setError]    = useState<string | null>(null)
@@ -31,65 +32,72 @@ export default function MessageForm({ slotCount, displayName, firebaseUser, onPo
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    const trimmed = content.trim()
-    if (!trimmed || loading || overLimit) return
-
+    if (!content.trim() || loading || overLimit) return
     setLoading(true)
     setError(null)
-
-    const idToken = await firebaseUser.getIdToken()
-    const res = await fetch('/api/post', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
-      body:    JSON.stringify({ content: trimmed }),
-    })
-
-    setLoading(false)
-    const json = await res.json().catch(() => ({}))
-
-    if (!res.ok) {
-      const code = json.error as string
-      if (code === 'LIMIT_REACHED')   setError('You have said your 100 things.')
-      else if (code === 'TOO_MANY_WORDS') setError('Too long.')
-      else if (code === 'RATE_LIMITED')   setError('Wait a moment before posting again.')
-      else setError('Something went wrong. Try again.')
-      return
+    try {
+      const token = await firebaseUser.getIdToken()
+      const res   = await fetch('/api/messages', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body:    JSON.stringify({ content: content.trim() }),
+      })
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}))
+        setError(j.error ?? 'Error. Try again.')
+        return
+      }
+      const msg: Message = await res.json()
+      setContent('')
+      onPosted(msg)
+      setShareMsg(msg)
+    } catch {
+      setError('Network error. Try again.')
+    } finally {
+      setLoading(false)
     }
-
-    const newMsg: Message = { ...json.message, createdAt: null }
-    setContent('')
-    onPosted(newMsg)
-    setShareMsg(newMsg)
   }
 
   return (
     <>
-      <form onSubmit={handleSubmit} className="w-full flex flex-col gap-[14px] mb-[30px]">
+      <form onSubmit={handleSubmit} className="w-full" style={{ marginBottom: '30px' }}>
         <textarea
           value={content}
           onChange={e => setContent(e.target.value)}
-          placeholder="Say something that matters."
-          rows={3}
-          className={`w-full bg-transparent border rounded-[6px] text-white font-mono text-[12px] px-4 py-4 outline-none placeholder-[#444] transition-colors resize-none ${overLimit ? 'border-[#553333]' : 'border-[#333] focus:border-[#555]'}`}
-          disabled={loading}
+          placeholder={t.placeholder}
+          rows={1}
+          className="w-full font-mono text-white text-[12px] bg-transparent outline-none resize-none placeholder-[#444]"
+          style={{
+            border: `0.5px solid ${overLimit ? '#666' : '#333'}`,
+            borderRadius: '6px',
+            padding: '16px',
+            marginBottom: '14px',
+            minHeight: '54px',
+            transition: 'border-color 0.2s',
+          }}
+          onInput={e => {
+            const el = e.currentTarget
+            el.style.height = 'auto'
+            el.style.height = el.scrollHeight + 'px'
+          }}
         />
-        {error && <p className="font-mono text-[11px] text-[#666]">{error}</p>}
+        {error && <p className="font-mono text-[10px] text-[#555] mb-3">{error}</p>}
         <button
           type="submit"
           disabled={loading || !content.trim() || overLimit}
-          className="w-full bg-transparent border border-white rounded-[6px] text-white font-serif text-[16px] font-bold py-[17px] transition-all hover:bg-white hover:text-[#0a0a0a] disabled:opacity-30 disabled:cursor-not-allowed"
+          className="w-full font-serif font-bold text-white transition-all hover:bg-white hover:text-[#0a0a0a] disabled:opacity-30 disabled:cursor-not-allowed"
+          style={{ border: '0.5px solid #fff', borderRadius: '6px', fontSize: '16px', padding: '17px' }}
         >
-          {loading ? '...' : 'I have said.'}
+          {loading ? '…' : t.button}
         </button>
       </form>
 
       {shareMsg && (
         <ShareModal
-          open
-          onClose={() => setShareMsg(null)}
           content={shareMsg.content}
           slotNumber={shareMsg.slotNumber}
           displayName={displayName}
+          onClose={() => setShareMsg(null)}
         />
       )}
     </>
