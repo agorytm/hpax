@@ -1,0 +1,41 @@
+rules_version = '2';
+// ============================================================
+// HPAX — Firestore Security Rules
+//
+// Principe : lecture publique, AUCUN write depuis le client.
+// Tous les writes passent par les API Routes Next.js (Admin SDK)
+// qui bypassent ces règles. Le client ne peut donc jamais :
+//   - créer un message directement
+//   - modifier le messageCount
+//   - supprimer quoi que ce soit
+//   - se donner le badge verified
+// ============================================================
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Profiles ───────────────────────────────────────────
+    match /profiles/{userId} {
+      // Lecture publique (feed affiche le nom de l'auteur)
+      allow read: if true;
+
+      // AUCUN write direct depuis le client
+      // → POST /api/profile gère la création via Admin SDK
+      allow write: if false;
+    }
+
+    // ── Messages ───────────────────────────────────────────
+    match /messages/{messageId} {
+      // Lecture publique (feed global)
+      allow read: if true;
+
+      // AUCUN write direct depuis le client
+      // → POST /api/post gère la création via Admin SDK
+      allow write: if false;
+    }
+
+    // Blocage catch-all pour tout autre document
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

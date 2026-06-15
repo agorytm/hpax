@@ -1,0 +1,30 @@
+# Env (ne jamais commiter les clés)
+.env
+.env.local
+.env.*.local
+
+# Next.js
+.next/
+out/
+build/
+
+# Node
+node_modules/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Vercel
+.vercel
+
+# Firebase
+.firebase/
+firebase-debug.log
+firestore-debug.log
+supabase/
+lib/supabase/
+supabase/
+lib/supabase/
+supabase/
+lib/supabase/
