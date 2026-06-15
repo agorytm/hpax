@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { adminAuth, adminDb } from '@/lib/firebase/admin'
+import { getAdminDb, getAdminAuth } from '@/lib/firebase/admin'
 
 /**
  * GET /api/admin/stats
@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
     const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null
     if (!idToken) return NextResponse.json({ error: 'MISSING_TOKEN' }, { status: 401 })
 
-    const decoded = await adminAuth.verifyIdToken(idToken)
+    const decoded = await getAdminAuth().verifyIdToken(idToken)
     if (!decoded.admin) return NextResponse.json({ error: 'NOT_ADMIN' }, { status: 403 })
 
     const now   = Date.now()
@@ -20,11 +20,11 @@ export async function GET(req: NextRequest) {
     const week  = now - 7 * 86_400_000
 
     const [profilesSnap, messagesSnap, recentDaySnap, recentWeekSnap] = await Promise.all([
-      adminDb.collection('profiles').count().get(),
-      adminDb.collection('messages').count().get(),
-      adminDb.collection('messages')
+      getAdminDb().collection('profiles').count().get(),
+      getAdminDb().collection('messages').count().get(),
+      getAdminDb().collection('messages')
         .where('createdAt', '>=', new Date(day)).count().get(),
-      adminDb.collection('messages')
+      getAdminDb().collection('messages')
         .where('createdAt', '>=', new Date(week)).count().get(),
     ])
 

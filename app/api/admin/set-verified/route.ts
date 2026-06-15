@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { adminAuth, adminDb } from '@/lib/firebase/admin'
+import { getAdminDb, getAdminAuth } from '@/lib/firebase/admin'
 
 /**
  * POST /api/admin/set-verified
@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
     const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null
     if (!idToken) return NextResponse.json({ error: 'MISSING_TOKEN' }, { status: 401 })
 
-    const decoded = await adminAuth.verifyIdToken(idToken)
+    const decoded = await getAdminAuth().verifyIdToken(idToken)
     if (!decoded.admin) return NextResponse.json({ error: 'NOT_ADMIN' }, { status: 403 })
 
     const { userId, verified } = await req.json().catch(() => ({}))
@@ -21,16 +21,16 @@ export async function POST(req: NextRequest) {
     }
 
     // Update profile
-    await adminDb.collection('profiles').doc(userId).update({ verified })
+    await getAdminDb().collection('profiles').doc(userId).update({ verified })
 
     // Also update all their messages (denormalized)
-    const msgs = await adminDb.collection('messages')
+    const msgs = await getAdminDb().collection('messages')
       .where('userId', '==', userId).get()
-    const batch = adminDb.batch()
+    const batch = getAdminDb().batch()
     msgs.docs.forEach(d => batch.update(d.ref, { verified }))
     await batch.commit()
 
-    await adminDb.collection('adminLogs').add({
+    await getAdminDb().collection('adminLogs').add({
       adminUid: decoded.uid, action: 'set-verified',
       targetId: userId, verified, at: new Date(),
     })

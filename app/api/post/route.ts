@@ -9,7 +9,7 @@
 // • Le slot est toujours assigné ici, jamais par le client
 
 import { NextRequest, NextResponse } from 'next/server'
-import { adminAuth, adminDb } from '@/lib/firebase/admin'
+import { getAdminDb, getAdminAuth } from '@/lib/firebase/admin'
 import { FieldValue }         from 'firebase-admin/firestore'
 
 const MAX_WORDS = 100
@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
   let uid: string
 
   try {
-    const decoded = await adminAuth.verifyIdToken(idToken)
+    const decoded = await getAdminAuth().verifyIdToken(idToken)
     uid = decoded.uid
   } catch {
     return NextResponse.json({ error: 'INVALID_TOKEN' }, { status: 401 })
@@ -67,10 +67,10 @@ export async function POST(req: NextRequest) {
   // si deux requêtes lisent le même profileRef en parallèle,
   // Firestore relance la transaction perdante. La logique est donc
   // toujours cohérente.
-  const profileRef = adminDb.collection('profiles').doc(uid)
+  const profileRef = getAdminDb().collection('profiles').doc(uid)
 
   try {
-    const result = await adminDb.runTransaction(async (tx) => {
+    const result = await getAdminDb().runTransaction(async (tx) => {
       const profileSnap = await tx.get(profileRef)
 
       if (!profileSnap.exists) {
@@ -85,7 +85,7 @@ export async function POST(req: NextRequest) {
       }
 
       const slotNumber  = currentCount + 1
-      const messageRef  = adminDb.collection('messages').doc()
+      const messageRef  = getAdminDb().collection('messages').doc()
 
       tx.update(profileRef, { messageCount: FieldValue.increment(1) })
       tx.set(messageRef, {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { adminAuth, adminDb } from '@/lib/firebase/admin'
+import { getAdminDb, getAdminAuth } from '@/lib/firebase/admin'
 import { FieldValue } from 'firebase-admin/firestore'
 import { createHash } from 'crypto'
 
@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
     const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null
     if (!idToken) return fail('MISSING_TOKEN', 401)
 
-    const decoded = await adminAuth.verifyIdToken(idToken)
+    const decoded = await getAdminAuth().verifyIdToken(idToken)
     uid = decoded.uid
     if (!decoded.admin) return fail('NOT_ADMIN', 403)
 
@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 6. Check message exists
-    const msgRef  = adminDb.collection('messages').doc(messageId)
+    const msgRef  = getAdminDb().collection('messages').doc(messageId)
     const msgSnap = await msgRef.get()
     if (!msgSnap.exists) {
       await log(uid, ip, 'delete', messageId, 'MESSAGE_NOT_FOUND')
@@ -70,8 +70,8 @@ export async function POST(req: NextRequest) {
     const msgData = msgSnap.data()!
 
     // 7. Atomic delete: remove message + decrement user counter
-    await adminDb.runTransaction(async tx => {
-      const profileRef = adminDb.collection('profiles').doc(msgData.userId)
+    await getAdminDb().runTransaction(async tx => {
+      const profileRef = getAdminDb().collection('profiles').doc(msgData.userId)
       tx.delete(msgRef)
       tx.update(profileRef, { messageCount: FieldValue.increment(-1) })
     })
@@ -101,7 +101,7 @@ async function log(
   targetId: string, result: string, extra?: Record<string, unknown>
 ) {
   try {
-    await adminDb.collection('adminLogs').add({
+    await getAdminDb().collection('adminLogs').add({
       adminUid, ip, action, targetId, result, ...extra, at: new Date(),
     })
   } catch { /* never crash the route because of logging */ }

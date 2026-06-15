@@ -1,22 +1,25 @@
 // Firebase Admin SDK — utilisé uniquement dans les API Routes (serveur).
-// N'est JAMAIS importé côté client.
-// Utilise le service account pour bypasser les Firestore Security Rules
-// (équivalent au rôle postgres SECURITY DEFINER).
+// Lazy-initialized pour éviter le crash au build time (env vars absentes).
 
-import { initializeApp, getApps, cert } from 'firebase-admin/app'
-import { getFirestore } from 'firebase-admin/firestore'
-import { getAuth }      from 'firebase-admin/auth'
+import { initializeApp, getApps, getApp, cert, App } from 'firebase-admin/app'
+import { getFirestore, Firestore } from 'firebase-admin/firestore'
+import { getAuth, Auth }           from 'firebase-admin/auth'
 
-if (!getApps().length) {
-  initializeApp({
-    credential: cert({
-      projectId:   process.env.FIREBASE_PROJECT_ID!,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL!,
-      // Vercel stocke la clé privée avec des \n échappés
-      privateKey:  process.env.FIREBASE_PRIVATE_KEY!.replace(/\\n/g, '\n'),
-    }),
-  })
+function getAdminApp(): App {
+  if (getApps().length > 0) return getApp()
+
+  const projectId   = process.env.FIREBASE_PROJECT_ID
+  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL
+  const privateKey  = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n')
+
+  if (!projectId || !clientEmail || !privateKey) {
+    throw new Error(
+      'Missing Firebase Admin env vars: FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY'
+    )
+  }
+
+  return initializeApp({ credential: cert({ projectId, clientEmail, privateKey }) })
 }
 
-export const adminDb   = getFirestore()
-export const adminAuth = getAuth()
+export function getAdminDb(): Firestore  { return getFirestore(getAdminApp()) }
+export function getAdminAuth(): Auth     { return getAuth(getAdminApp()) }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { adminAuth, adminDb } from '@/lib/firebase/admin'
+import { getAdminDb, getAdminAuth } from '@/lib/firebase/admin'
 import { createHash } from 'crypto'
 
 /**
@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
     const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null
     if (!idToken) return NextResponse.json({ error: 'MISSING_TOKEN' }, { status: 401 })
 
-    const decoded = await adminAuth.verifyIdToken(idToken)
+    const decoded = await getAdminAuth().verifyIdToken(idToken)
     if (!decoded.admin) return NextResponse.json({ error: 'NOT_ADMIN' }, { status: 403 })
 
     const { userId, grantAdmin, masterKey } = await req.json().catch(() => ({}))
@@ -29,9 +29,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'WRONG_CREDENTIALS' }, { status: 403 })
     }
 
-    await adminAuth.setCustomUserClaims(userId, { admin: grantAdmin })
+    await getAdminAuth().setCustomUserClaims(userId, { admin: grantAdmin })
 
-    await adminDb.collection('adminLogs').add({
+    await getAdminDb().collection('adminLogs').add({
       adminUid: decoded.uid, action: 'set-admin',
       targetId: userId, grantAdmin, at: new Date(),
     })

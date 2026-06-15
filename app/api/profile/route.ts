@@ -5,7 +5,7 @@
 // les updates côté client (le displayName est permanent).
 
 import { NextRequest, NextResponse } from 'next/server'
-import { adminAuth, adminDb } from '@/lib/firebase/admin'
+import { getAdminDb, getAdminAuth } from '@/lib/firebase/admin'
 import { FieldValue }         from 'firebase-admin/firestore'
 
 export async function POST(req: NextRequest) {
@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
 
   let uid: string
   try {
-    const decoded = await adminAuth.verifyIdToken(authHeader.slice(7))
+    const decoded = await getAdminAuth().verifyIdToken(authHeader.slice(7))
     uid = decoded.uid
   } catch {
     return NextResponse.json({ error: 'INVALID_TOKEN' }, { status: 401 })
@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
   }
 
   // ── 3. Idempotent : ne crée pas si déjà existant ─────────
-  const profileRef = adminDb.collection('profiles').doc(uid)
+  const profileRef = getAdminDb().collection('profiles').doc(uid)
   const existing   = await profileRef.get()
 
   if (existing.exists) {
