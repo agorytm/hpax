@@ -5,106 +5,48 @@ import { createHash } from 'crypto'
 
 export const dynamic = 'force-dynamic'
 
-function sha256(s: string) {
-  return createHash('sha256').update(s).digest('hex')
-}
+const sha256 = (s: string) => createHash('sha256').update(s).digest('hex')
 
-/**
- * POST /api/admin/delete-message
- * Body: { messageId, adminPin, masterKey }
- *
- * 3 verifications, all server-side:
- *   1. Firebase token + custom claim admin:true
- *   2. adminPin  → sha256 must match ADMIN_PIN_HASH
- *   3. masterKey → sha256 must match ADMIN_MASTER_KEY_HASH
- *
- * Every attempt is logged in Firestore (adminLogs collection).
- */
 export async function POST(req: NextRequest) {
-  const ip = req.headers.get('x-forwarded-for') ?? 'unknown'
-  let uid = 'unknown'
-
   try {
-    // 1. Firebase Auth + admin claim
     const authHeader = req.headers.get('authorization') ?? ''
     const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null
-    if (!idToken) return fail('MISSING_TOKEN', 401)
+    if (!idToken) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const decoded = await getAdminAuth().verifyIdToken(idToken)
-    uid = decoded.uid
-    if (!decoded.admin) return fail('NOT_ADMIN', 403)
+    if (!decoded.superAdmin) return NextResponse.json({ error: 'Super admin only' }, { status: 403 })
 
-    // 2. Parse body
-    const body = await req.json().catch(() => ({}))
-    const { messageId, adminPin, masterKey } = body
+    const { messageId, adminPin, masterKey, restoreSlot } = await req.json()
     if (!messageId || !adminPin || !masterKey) {
-      await log(uid, ip, 'delete', messageId, 'MISSING_FIELDS')
-      return fail('MISSING_FIELDS', 400)
+      return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
     }
 
-    // 3. Server config check
-    const pinHash    = process.env.ADMIN_PIN_HASH
+    const pinHash = process.env.ADMIN_PIN_HASH
     const masterHash = process.env.ADMIN_MASTER_KEY_HASH
-    if (!pinHash || !masterHash) {
-      await log(uid, ip, 'delete', messageId, 'SERVER_CONFIG_ERROR')
-      return fail('SERVER_ERROR', 500)
-    }
+    if (!pinHash || !masterHash) return NextResponse.json({ error: 'Server error' }, { status: 500 })
 
-    // 4. Verify admin PIN
-    if (sha256(adminPin) !== pinHash) {
-      await log(uid, ip, 'delete', messageId, 'WRONG_PIN')
-      return fail('WRONG_CREDENTIALS', 403)
-    }
+    if (sha256(adminPin) !== pinHash) return NextResponse.json({ error: 'Wrong PIN' }, { status: 403 })
+    if (sha256(masterKey) !== masterHash) return NextResponse.json({ error: 'Wrong master key' }, { status: 403 })
 
-    // 5. Verify master key
-    if (sha256(masterKey) !== masterHash) {
-      await log(uid, ip, 'delete', messageId, 'WRONG_MASTER_KEY')
-      return fail('WRONG_CREDENTIALS', 403)
-    }
-
-    // 6. Check message exists
-    const msgRef  = getAdminDb().collection('messages').doc(messageId)
+    const db = getAdminDb()
+    const msgRef = db.collection('messages').doc(messageId)
     const msgSnap = await msgRef.get()
-    if (!msgSnap.exists) {
-      await log(uid, ip, 'delete', messageId, 'MESSAGE_NOT_FOUND')
-      return fail('NOT_FOUND', 404)
-    }
-    const msgData = msgSnap.data()!
+    if (!msgSnap.exists) return NextResponse.json({ error: 'Message not found' }, { status: 404 })
 
-    // 7. Atomic delete: remove message + decrement user counter
-    await getAdminDb().runTransaction(async tx => {
-      const profileRef = getAdminDb().collection('profiles').doc(msgData.userId)
+    const userId = msgSnap.data()!.userId
+
+    await db.runTransaction(async tx => {
       tx.delete(msgRef)
-      tx.update(profileRef, { messageCount: FieldValue.increment(-1) })
+      if (restoreSlot && userId) {
+        tx.update(db.collection('profiles').doc(userId), {
+          messageCount: FieldValue.increment(-1),
+        })
+      }
     })
 
-    // 8. Log success (includes truncated content for audit trail)
-    await log(uid, ip, 'delete', messageId, 'SUCCESS', {
-      deletedUserId:  msgData.userId,
-      deletedContent: (msgData.content ?? '').substring(0, 80),
-      deletedSlot:    msgData.slotNumber,
-    })
-
-    return NextResponse.json({ ok: true, messageId })
-
-  } catch (err: unknown) {
-    await log(uid, ip, 'delete', 'unknown', 'EXCEPTION', { error: String(err) })
+    return NextResponse.json({ ok: true, slotRestored: !!restoreSlot })
+  } catch (err) {
     console.error('[admin/delete-message]', err)
-    return fail('SERVER_ERROR', 500)
+    return NextResponse.json({ error: 'Server error' }, { status: 500 })
   }
-}
-
-function fail(error: string, status: number) {
-  return NextResponse.json({ error }, { status })
-}
-
-async function log(
-  adminUid: string, ip: string, action: string,
-  targetId: string, result: string, extra?: Record<string, unknown>
-) {
-  try {
-    await getAdminDb().collection('adminLogs').add({
-      adminUid, ip, action, targetId, result, ...extra, at: new Date(),
-    })
-  } catch { /* never crash the route because of logging */ }
 }
