@@ -7,7 +7,7 @@ import { onAuthStateChanged, User } from 'firebase/auth'
 import { collection, query, orderBy, limit, getDocs, onSnapshot, DocumentData } from 'firebase/firestore'
 import { auth, db } from '@/lib/firebase/client'
 import HpaxMain from '@/components/HpaxMain'
-import FeedOverlay from '@/components/FeedOverlay'h
+import FeedOverlay from '@/components/FeedOverlay'
 import type { Message, Profile } from '@/lib/types'
 import { T, type Lang } from '@/lib/translations'
 import Link from 'next/link'
