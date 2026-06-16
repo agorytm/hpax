@@ -10,11 +10,11 @@ type AdminLevel = 'loading' | 'denied' | 'admin' | 'superAdmin'
 type AdminTab = 'messages' | 'users' | 'texts'
 
 function toMsg(id: string, d: DocumentData): Message {
-  return { id, userId: d.userId, content: d.content, slotNumber: d.slotNumber,
-    displayName: d.displayName, verified: d.verified, createdAt: d.createdAt ?? null }
+  return { id, userId: d.userId, content: d.content ?? '', slotNumber: d.slotNumber ?? 0,
+    displayName: d.displayName ?? '', verified: d.verified ?? false, createdAt: d.createdAt ?? null }
 }
 function toProfile(id: string, d: DocumentData): Profile {
-  return { id, displayName: d.displayName, verified: d.verified ?? false,
+  return { id, displayName: d.displayName ?? '', verified: d.verified ?? false,
     messageCount: d.messageCount ?? 0, createdAt: d.createdAt ?? null,
     blocked: (d as any).blocked ?? false }
 }
@@ -46,10 +46,17 @@ export default function AdminPage() {
   const [deleteUserStatus, setDeleteUserStatus] = useState<string | null>(null)
   const [deleteUserBusy, setDeleteUserBusy] = useState(false)
 
+  // Purge modal
+  const [purgeOpen, setPurgeOpen] = useState(false)
+  const [purgeKey, setPurgeKey] = useState('')
+  const [purgeMode, setPurgeMode] = useState<'seed' | 'all'>('seed')
+  const [purgeStatus, setPurgeStatus] = useState<string | null>(null)
+  const [purgeBusy, setPurgeBusy] = useState(false)
+
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async fireUser => {
       if (!fireUser) { setLevel('denied'); return }
-      const token = await fireUser.getIdTokenResult()
+      const token = await fireUser.getIdTokenResult(true)
       if (token.claims.superAdmin) { setUser(fireUser); setLevel('superAdmin'); return }
       if (token.claims.admin) { setUser(fireUser); setLevel('admin'); return }
       setLevel('denied')
@@ -64,7 +71,7 @@ export default function AdminPage() {
     const statsRes = await fetch('/api/admin/stats', { headers: { Authorization: `Bearer ${idToken}` } })
     if (statsRes.ok) setStats(await statsRes.json())
 
-    const msgSnap = await getDocs(query(collection(db, 'messages'), orderBy('createdAt', 'desc'), limit(100)))
+    const msgSnap = await getDocs(query(collection(db, 'messages'), orderBy('createdAt', 'desc'), limit(200)))
     setMessages(msgSnap.docs.map(d => toMsg(d.id, d.data())))
 
     const profSnap = await getDocs(query(collection(db, 'profiles'), orderBy('createdAt', 'desc'), limit(100)))
@@ -88,9 +95,9 @@ export default function AdminPage() {
     setActionBusy(false)
     const json = await res.json()
     if (res.ok) {
-      setActionStatus(restoreSlot ? '✓ Supprimé — slot rendu' : '✓ Supprimé — slot conservé')
+      setActionStatus(restoreSlot ? '✓ Supprimé — slot rendu' : '✓ Supprimé')
       setMessages(prev => prev.filter(m => m.id !== actionTarget.id))
-      setTimeout(() => { setActionTarget(null); setActionStatus(null); setAdminPin(''); setMasterKey(''); setRestoreSlot(false) }, 1500)
+      setTimeout(() => { setActionTarget(null); setActionStatus(null); setAdminPin(''); setMasterKey(''); setRestoreSlot(false) }, 1200)
     } else { setActionStatus(`✗ ${json.error}`) }
   }
 
@@ -152,6 +159,25 @@ export default function AdminPage() {
     } else { setDeleteUserStatus(`✗ ${json.error}`) }
   }
 
+  async function handlePurge() {
+    if (!user) return
+    setPurgeBusy(true); setPurgeStatus(null)
+    const idToken = await user.getIdToken()
+    const res = await fetch('/api/admin/purge-messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+      body: JSON.stringify({ masterKey: purgeKey, seedOnly: purgeMode === 'seed' }),
+    })
+    setPurgeBusy(false)
+    const json = await res.json()
+    if (res.ok) {
+      setPurgeStatus(`✓ ${json.deleted} message(s) supprimé(s)`)
+      if (purgeMode === 'all') setMessages([])
+      else setMessages(prev => prev.filter(m => m.userId !== 'seed'))
+      setTimeout(() => { setPurgeOpen(false); setPurgeStatus(null); setPurgeKey('') }, 2000)
+    } else { setPurgeStatus(`✗ ${json.error}`) }
+  }
+
   async function handleSaveConfig() {
     if (!user) return
     setConfigSaving(true); setConfigStatus(null)
@@ -168,12 +194,12 @@ export default function AdminPage() {
 
   if (level === 'loading') return (
     <main className="min-h-screen flex items-center justify-center bg-[#0a0a0a]">
-      <span className="font-mono text-[12px] text-[#555] tracking-[0.3em]">HPAX ADMIN</span>
+      <span className="font-mono text-[12px] text-white tracking-[0.3em]">HPAX ADMIN</span>
     </main>
   )
   if (level === 'denied') return (
     <main className="min-h-screen flex items-center justify-center bg-[#0a0a0a]">
-      <span className="font-mono text-[11px] text-[#555]">Accès refusé.</span>
+      <span className="font-mono text-[11px] text-white">Accès refusé.</span>
     </main>
   )
 
@@ -184,14 +210,14 @@ export default function AdminPage() {
         {/* Header */}
         <div className="flex items-center justify-between mb-8 border-b border-[#1a1a1a] pb-5">
           <div className="flex items-center gap-3">
-            <span className="font-mono text-[13px] tracking-[0.3em] text-[#888]">HPAX ADMIN</span>
+            <span className="font-mono text-[13px] tracking-[0.3em] text-white">HPAX ADMIN</span>
             <span className={`font-mono text-[9px] px-2 py-0.5 rounded-[3px] ${
-              level === 'superAdmin' ? 'bg-[#1a1a00] text-[#cc9900]' : 'bg-[#0a1a0a] text-[#559955]'
+              level === 'superAdmin' ? 'bg-[#1a1a00] text-[#ffcc00]' : 'bg-[#0a1a0a] text-[#88cc88]'
             }`}>
               {level === 'superAdmin' ? 'SUPER ADMIN' : 'ADMIN'}
             </span>
           </div>
-          <span className="font-mono text-[10px] text-[#555]">{user?.email}</span>
+          <span className="font-mono text-[10px] text-white">{user?.email}</span>
         </div>
 
         {/* Stats */}
@@ -200,7 +226,7 @@ export default function AdminPage() {
             {([['Utilisateurs', stats.totalUsers], ['Messages', stats.totalMessages], ['24h', stats.messages24h], ['7 jours', stats.messages7d]] as [string, number][]).map(([label, val]) => (
               <div key={label} className="border border-[#1a1a1a] rounded-[5px] p-4">
                 <div className="font-serif text-[26px] font-bold leading-none mb-1 text-white">{val}</div>
-                <div className="font-mono text-[9px] text-[#555] uppercase tracking-[0.12em]">{label}</div>
+                <div className="font-mono text-[9px] text-white uppercase tracking-[0.12em]">{label}</div>
               </div>
             ))}
           </div>
@@ -211,7 +237,7 @@ export default function AdminPage() {
           {(['messages', 'users', 'texts'] as AdminTab[]).map(t => (
             <button key={t} onClick={() => setTab(t)}
               className={`font-mono text-[10px] uppercase tracking-[0.15em] px-4 py-2 transition-colors ${
-                tab === t ? 'text-white border-b border-white -mb-px' : 'text-[#444] hover:text-[#888]'
+                tab === t ? 'text-white border-b border-white -mb-px' : 'text-[#666] hover:text-white'
               }`}>
               {t === 'messages' ? 'Messages' : t === 'users' ? 'Utilisateurs' : 'Textes app'}
             </button>
@@ -220,24 +246,34 @@ export default function AdminPage() {
 
         {/* Messages tab */}
         {tab === 'messages' && (
-          <div className="space-y-0">
-            {messages.map(msg => (
-              <div key={msg.id} className="flex items-start gap-3 py-3 border-b border-[#111] group">
-                <span className="font-mono text-[10px] text-[#444] min-w-[46px] shrink-0">{msg.slotNumber}/100</span>
-                <div className="flex-1 min-w-0">
-                  <span className="font-mono text-[9px] text-[#666] uppercase tracking-[0.1em] mr-2">{msg.displayName}</span>
-                  <p className="font-serif text-[13px] italic text-white leading-[1.35] mt-0.5 break-words">&ldquo;{msg.content}&rdquo;</p>
-                </div>
-                {level === 'superAdmin' && (
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                    <button onClick={() => { setActionTarget(msg); setActionMode('edit'); setEditContent(msg.content); setActionStatus(null) }}
-                      className="font-mono text-[9px] text-[#555] hover:text-[#88f] px-2 py-1 transition-colors">edit</button>
-                    <button onClick={() => { setActionTarget(msg); setActionMode('delete'); setActionStatus(null); setAdminPin(''); setMasterKey(''); setRestoreSlot(false) }}
-                      className="font-mono text-[9px] text-[#555] hover:text-[#f44] px-2 py-1 transition-colors">del</button>
-                  </div>
-                )}
+          <div>
+            {level === 'superAdmin' && (
+              <div className="flex justify-end mb-4">
+                <button onClick={() => { setPurgeOpen(true); setPurgeKey(''); setPurgeStatus(null); setPurgeMode('seed') }}
+                  className="font-mono text-[9px] text-[#f44] border border-[#311] rounded-[4px] px-3 py-1.5 hover:bg-[#1a0808] transition-colors">
+                  Purger messages
+                </button>
               </div>
-            ))}
+            )}
+            <div className="space-y-0">
+              {messages.map(msg => (
+                <div key={msg.id} className="flex items-start gap-3 py-3 border-b border-[#111] group">
+                  <span className="font-mono text-[10px] text-white min-w-[46px] shrink-0">{msg.slotNumber}/100</span>
+                  <div className="flex-1 min-w-0">
+                    <span className="font-mono text-[9px] text-white uppercase tracking-[0.1em] mr-2">{msg.displayName}</span>
+                    <p className="font-serif text-[13px] italic text-white leading-[1.35] mt-0.5 break-words">&ldquo;{msg.content || '—'}&rdquo;</p>
+                  </div>
+                  {level === 'superAdmin' && (
+                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                      <button onClick={() => { setActionTarget(msg); setActionMode('edit'); setEditContent(msg.content); setActionStatus(null) }}
+                        className="font-mono text-[9px] text-[#88f] px-2 py-1 hover:text-white transition-colors">edit</button>
+                      <button onClick={() => { setActionTarget(msg); setActionMode('delete'); setActionStatus(null); setAdminPin(''); setMasterKey(''); setRestoreSlot(false) }}
+                        className="font-mono text-[9px] text-[#f44] px-2 py-1 hover:text-white transition-colors">del</button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
@@ -247,25 +283,25 @@ export default function AdminPage() {
             {profiles.map(p => (
               <div key={p.id} className="flex items-center gap-3 py-2.5 border-b border-[#111]">
                 <div className="flex-1 min-w-0">
-                  <span className={`font-mono text-[11px] ${p.blocked ? 'text-[#555] line-through' : 'text-white'}`}>{p.displayName}</span>
-                  {p.blocked && <span className="font-mono text-[9px] text-[#a44] ml-2">bloqué</span>}
+                  <span className={`font-mono text-[11px] ${p.blocked ? 'text-[#666] line-through' : 'text-white'}`}>{p.displayName}</span>
+                  {p.blocked && <span className="font-mono text-[9px] text-[#f44] ml-2">bloqué</span>}
                 </div>
-                <span className="font-mono text-[9px] text-[#444] shrink-0">{p.messageCount}/100</span>
+                <span className="font-mono text-[9px] text-white shrink-0">{p.messageCount}/100</span>
                 <button onClick={() => handleSetVerified(p.id, !p.verified)}
                   className={`font-mono text-[9px] px-2 py-1 border rounded-[3px] transition-colors shrink-0 ${
-                    p.verified ? 'border-[#444] text-[#888] hover:border-[#333]' : 'border-[#333] text-[#555] hover:text-[#888]'
+                    p.verified ? 'border-[#555] text-white' : 'border-[#333] text-[#888] hover:text-white'
                   }`}>
                   {p.verified ? '✓' : 'vérifier'}
                 </button>
                 <button onClick={() => handleBlockUser(p.id, !p.blocked)}
                   className={`font-mono text-[9px] px-2 py-1 border rounded-[3px] transition-colors shrink-0 ${
-                    p.blocked ? 'border-[#444] text-[#777] hover:text-[#aaa]' : 'border-[#311] text-[#744] hover:text-[#f44]'
+                    p.blocked ? 'border-[#444] text-white hover:text-[#aaa]' : 'border-[#422] text-[#f44] hover:text-white'
                   }`}>
                   {p.blocked ? 'débloquer' : 'bloquer'}
                 </button>
                 {level === 'superAdmin' && (
                   <button onClick={() => { setDeleteUserTarget(p); setDeleteUserKey(''); setDeleteUserStatus(null) }}
-                    className="font-mono text-[9px] text-[#422] hover:text-[#f44] px-2 py-1 transition-colors shrink-0">
+                    className="font-mono text-[9px] text-[#f44] hover:text-white px-2 py-1 transition-colors shrink-0">
                     suppr.
                   </button>
                 )}
@@ -279,22 +315,22 @@ export default function AdminPage() {
           <div className="flex flex-col gap-4">
             {Object.entries(configEdits).map(([key, val]) => (
               <div key={key} className="flex flex-col gap-1">
-                <label className="font-mono text-[9px] text-[#555] uppercase tracking-[0.1em]">{key}</label>
+                <label className="font-mono text-[9px] text-white uppercase tracking-[0.1em]">{key}</label>
                 <textarea
                   value={val}
                   onChange={e => setConfigEdits(prev => ({ ...prev, [key]: e.target.value }))}
                   rows={val.length > 80 ? 3 : 1}
-                  className="bg-[#0f0f0f] border border-[#222] rounded-[4px] font-mono text-[11px] px-3 py-2 text-white resize-none outline-none focus:border-[#444]"
+                  className="bg-[#0f0f0f] border border-[#222] rounded-[4px] font-mono text-[11px] px-3 py-2 text-white resize-none outline-none focus:border-[#555]"
                 />
               </div>
             ))}
             <div className="flex items-center gap-3 mt-2">
               <button onClick={handleSaveConfig} disabled={configSaving}
-                className="font-mono text-[10px] text-[#888] border border-[#333] rounded-[4px] px-4 py-2 hover:text-white hover:border-[#555] transition-colors disabled:opacity-30">
+                className="font-mono text-[10px] text-white border border-[#444] rounded-[4px] px-4 py-2 hover:border-white transition-colors disabled:opacity-30">
                 {configSaving ? '…' : 'Sauvegarder'}
               </button>
               {configStatus && (
-                <span className={`font-mono text-[10px] ${configStatus.startsWith('✓') ? 'text-[#4a4]' : 'text-[#a44]'}`}>{configStatus}</span>
+                <span className={`font-mono text-[10px] ${configStatus.startsWith('✓') ? 'text-[#4d4]' : 'text-[#f44]'}`}>{configStatus}</span>
               )}
             </div>
           </div>
@@ -306,39 +342,39 @@ export default function AdminPage() {
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-6">
           <div className="bg-[#0f0f0f] border border-[#2a2a2a] rounded-[8px] p-7 w-full max-w-[440px] flex flex-col gap-5">
             <div>
-              <p className="font-mono text-[9px] text-[#555] uppercase tracking-[0.15em] mb-2">
+              <p className="font-mono text-[9px] text-white uppercase tracking-[0.15em] mb-2">
                 {actionMode === 'edit' ? 'Modifier le message' : 'Supprimer le message'}
               </p>
-              <p className="font-serif text-[12px] italic text-[#aaa]">&ldquo;{actionTarget.content.substring(0, 100)}&rdquo;</p>
-              <p className="font-mono text-[9px] text-[#444] mt-1">{actionTarget.displayName} — {actionTarget.slotNumber}/100</p>
+              <p className="font-serif text-[12px] italic text-white">&ldquo;{(actionTarget.content || '—').substring(0, 100)}&rdquo;</p>
+              <p className="font-mono text-[9px] text-white mt-1">{actionTarget.displayName} — {actionTarget.slotNumber}/100</p>
             </div>
             {actionMode === 'edit' ? (
               <textarea value={editContent} onChange={e => setEditContent(e.target.value)} rows={4}
-                className="bg-transparent border border-[#222] rounded-[4px] font-serif text-[13px] italic px-3 py-2 text-white resize-none outline-none focus:border-[#444]" />
+                className="bg-transparent border border-[#333] rounded-[4px] font-serif text-[13px] italic px-3 py-2 text-white resize-none outline-none focus:border-[#666]" />
             ) : (
               <div className="flex flex-col gap-3">
                 <div className="flex items-center gap-2">
-                  <span className="font-mono text-[10px] text-[#2a7a2a] w-4">✓</span>
-                  <span className="font-mono text-[10px] text-[#555]">Session super admin active</span>
+                  <span className="font-mono text-[10px] text-[#4d4]">✓</span>
+                  <span className="font-mono text-[10px] text-white">Session super admin active</span>
                 </div>
                 <input type="password" placeholder="Admin PIN" value={adminPin} onChange={e => setAdminPin(e.target.value)}
-                  className="bg-transparent border border-[#222] rounded-[4px] font-mono text-[11px] px-3 py-2 text-white placeholder-[#333] outline-none focus:border-[#444]" />
+                  className="bg-transparent border border-[#333] rounded-[4px] font-mono text-[11px] px-3 py-2 text-white placeholder-[#555] outline-none focus:border-[#666]" />
                 <input type="password" placeholder="Master key" value={masterKey} onChange={e => setMasterKey(e.target.value)}
-                  className="bg-transparent border border-[#222] rounded-[4px] font-mono text-[11px] px-3 py-2 text-white placeholder-[#333] outline-none focus:border-[#444]" />
+                  className="bg-transparent border border-[#333] rounded-[4px] font-mono text-[11px] px-3 py-2 text-white placeholder-[#555] outline-none focus:border-[#666]" />
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input type="checkbox" checked={restoreSlot} onChange={e => setRestoreSlot(e.target.checked)} className="accent-white" />
-                  <span className="font-mono text-[10px] text-[#777]">Rendre le slot à l&apos;utilisateur (+1 message disponible)</span>
+                  <span className="font-mono text-[10px] text-white">Rendre le slot (+1 message disponible)</span>
                 </label>
               </div>
             )}
-            {actionStatus && <p className={`font-mono text-[11px] ${actionStatus.startsWith('✓') ? 'text-[#4a4]' : 'text-[#a44]'}`}>{actionStatus}</p>}
+            {actionStatus && <p className={`font-mono text-[11px] ${actionStatus.startsWith('✓') ? 'text-[#4d4]' : 'text-[#f44]'}`}>{actionStatus}</p>}
             <div className="flex gap-3">
               <button onClick={() => { setActionTarget(null); setActionStatus(null) }}
-                className="flex-1 font-mono text-[10px] text-[#444] border border-[#1a1a1a] rounded-[4px] py-2 hover:text-[#666] transition-colors">Annuler</button>
+                className="flex-1 font-mono text-[10px] text-white border border-[#222] rounded-[4px] py-2 hover:border-[#555] transition-colors">Annuler</button>
               <button onClick={actionMode === 'edit' ? handleEdit : handleDelete}
                 disabled={actionBusy || (actionMode === 'delete' && (!adminPin || !masterKey))}
                 className={`flex-1 font-mono text-[10px] border rounded-[4px] py-2 transition-colors disabled:opacity-30 ${
-                  actionMode === 'edit' ? 'text-[#88f] border-[#224] hover:bg-[#111833]' : 'text-[#f44] border-[#311] hover:bg-[#1a0808]'
+                  actionMode === 'edit' ? 'text-white border-[#446] hover:bg-[#111833]' : 'text-[#f44] border-[#422] hover:bg-[#1a0808]'
                 }`}>
                 {actionBusy ? '…' : actionMode === 'edit' ? 'Enregistrer' : 'Supprimer'}
               </button>
@@ -352,19 +388,52 @@ export default function AdminPage() {
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-6">
           <div className="bg-[#0f0f0f] border border-[#2a2a2a] rounded-[8px] p-7 w-full max-w-[400px] flex flex-col gap-5">
             <div>
-              <p className="font-mono text-[9px] text-[#a44] uppercase tracking-[0.15em] mb-2">Supprimer le compte</p>
+              <p className="font-mono text-[9px] text-[#f44] uppercase tracking-[0.15em] mb-2">Supprimer le compte</p>
               <p className="font-mono text-[12px] text-white">{deleteUserTarget.displayName}</p>
-              <p className="font-mono text-[9px] text-[#555] mt-1">Cette action est irréversible. Les messages restent dans le feed.</p>
+              <p className="font-mono text-[9px] text-white mt-1">Cette action est irréversible.</p>
             </div>
             <input type="password" placeholder="Master key" value={deleteUserKey} onChange={e => setDeleteUserKey(e.target.value)}
-              className="bg-transparent border border-[#222] rounded-[4px] font-mono text-[11px] px-3 py-2 text-white placeholder-[#333] outline-none focus:border-[#444]" />
-            {deleteUserStatus && <p className={`font-mono text-[11px] ${deleteUserStatus.startsWith('✓') ? 'text-[#4a4]' : 'text-[#a44]'}`}>{deleteUserStatus}</p>}
+              className="bg-transparent border border-[#333] rounded-[4px] font-mono text-[11px] px-3 py-2 text-white placeholder-[#555] outline-none focus:border-[#666]" />
+            {deleteUserStatus && <p className={`font-mono text-[11px] ${deleteUserStatus.startsWith('✓') ? 'text-[#4d4]' : 'text-[#f44]'}`}>{deleteUserStatus}</p>}
             <div className="flex gap-3">
               <button onClick={() => { setDeleteUserTarget(null); setDeleteUserStatus(null) }}
-                className="flex-1 font-mono text-[10px] text-[#444] border border-[#1a1a1a] rounded-[4px] py-2 hover:text-[#666] transition-colors">Annuler</button>
+                className="flex-1 font-mono text-[10px] text-white border border-[#222] rounded-[4px] py-2 hover:border-[#555] transition-colors">Annuler</button>
               <button onClick={handleDeleteUser} disabled={deleteUserBusy || !deleteUserKey}
-                className="flex-1 font-mono text-[10px] text-[#f44] border border-[#311] rounded-[4px] py-2 hover:bg-[#1a0808] transition-colors disabled:opacity-30">
+                className="flex-1 font-mono text-[10px] text-[#f44] border border-[#422] rounded-[4px] py-2 hover:bg-[#1a0808] transition-colors disabled:opacity-30">
                 {deleteUserBusy ? '…' : 'Supprimer définitivement'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Purge modal */}
+      {purgeOpen && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-6">
+          <div className="bg-[#0f0f0f] border border-[#2a2a2a] rounded-[8px] p-7 w-full max-w-[440px] flex flex-col gap-5">
+            <div>
+              <p className="font-mono text-[9px] text-[#f44] uppercase tracking-[0.15em] mb-2">Purger les messages</p>
+              <p className="font-mono text-[11px] text-white">Supprimer des messages en masse. Action irréversible.</p>
+            </div>
+            <div className="flex flex-col gap-2">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="radio" checked={purgeMode === 'seed'} onChange={() => setPurgeMode('seed')} className="accent-white" />
+                <span className="font-mono text-[10px] text-white">Messages seed uniquement (userId = &ldquo;seed&rdquo;)</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="radio" checked={purgeMode === 'all'} onChange={() => setPurgeMode('all')} className="accent-white" />
+                <span className="font-mono text-[10px] text-[#f44]">TOUS les messages ⚠</span>
+              </label>
+            </div>
+            <input type="password" placeholder="Master key" value={purgeKey} onChange={e => setPurgeKey(e.target.value)}
+              className="bg-transparent border border-[#333] rounded-[4px] font-mono text-[11px] px-3 py-2 text-white placeholder-[#555] outline-none focus:border-[#666]" />
+            {purgeStatus && <p className={`font-mono text-[11px] ${purgeStatus.startsWith('✓') ? 'text-[#4d4]' : 'text-[#f44]'}`}>{purgeStatus}</p>}
+            <div className="flex gap-3">
+              <button onClick={() => { setPurgeOpen(false); setPurgeStatus(null) }}
+                className="flex-1 font-mono text-[10px] text-white border border-[#222] rounded-[4px] py-2 hover:border-[#555] transition-colors">Annuler</button>
+              <button onClick={handlePurge} disabled={purgeBusy || !purgeKey}
+                className="flex-1 font-mono text-[10px] text-[#f44] border border-[#422] rounded-[4px] py-2 hover:bg-[#1a0808] transition-colors disabled:opacity-30">
+                {purgeBusy ? '…' : 'Purger'}
               </button>
             </div>
           </div>
@@ -372,4 +441,4 @@ export default function AdminPage() {
       )}
     </main>
   )
-}
+      }
