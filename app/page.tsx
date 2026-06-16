@@ -7,7 +7,7 @@ import { onAuthStateChanged, User } from 'firebase/auth'
 import { collection, query, orderBy, limit, getDocs, onSnapshot, DocumentData } from 'firebase/firestore'
 import { auth, db } from '@/lib/firebase/client'
 import HpaxMain from '@/components/HpaxMain'
-import FeedOverlay from '@/components/FeedOverlay'
+import FeedOverlay from '@/components/FeedOverlay'h
 import type { Message, Profile } from '@/lib/types'
 import { T, type Lang } from '@/lib/translations'
 import Link from 'next/link'
@@ -71,13 +71,13 @@ export default function HomePage() {
   }, [appState])
 
   if (appState === 'loading') return (
-    <main className="min-h-screen flex items-center justify-center bg-[#1a1a1a]">
+    <main className="min-h-screen flex items-center justify-center bg-[#0a0a0a]">
       <span className="font-mono text-[12px] text-[#333]" style={{ letterSpacing: '0.3em' }}>HPAX</span>
     </main>
   )
 
   if (appState === 'app' && profile && firebaseUser) return (
-    <main className="min-h-screen flex items-center justify-center bg-[#1a1a1a]">
+    <main className="min-h-screen flex items-center justify-center bg-[#0a0a0a]">
       <div className="relative bg-[#0a0a0a] text-white overflow-hidden w-full h-screen md:w-[360px] md:h-[740px] md:rounded-[36px]" style={{ border: '0.5px solid #333' }}>
         <HpaxMain profile={profile} firebaseUser={firebaseUser} initialMessages={messages} />
       </div>
@@ -92,7 +92,7 @@ export default function HomePage() {
   ]
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-[#1a1a1a]">
+    <main className="min-h-screen flex items-center justify-center bg-[#0a0a0a]">
       <div className="relative bg-[#0a0a0a] text-white overflow-hidden w-full h-screen md:w-[360px] md:h-[740px] md:rounded-[36px]" style={{ border: '0.5px solid #333' }}>
         <div className="flex flex-col items-center h-full pt-10 px-7 overflow-y-auto">
 
