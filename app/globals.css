@@ -2,11 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --font-playfair: 'Playfair Display', Georgia, serif;
-  --font-space-mono: 'Space Mono', monospace;
-}
-
 * {
   box-sizing: border-box;
   margin: 0;
@@ -19,7 +14,7 @@ body {
 }
 
 body {
-  background: #1a1a1a;
+  background: #0a0a0a;
   color: #fff;
   font-family: var(--font-playfair);
   -webkit-font-smoothing: antialiased;
