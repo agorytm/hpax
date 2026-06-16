@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Playfair_Display, Space_Mono } from 'next/font/google'
 import './globals.css'
+import ServiceWorkerRegistration from '@/components/ServiceWorkerRegistration'
 
 const playfair = Playfair_Display({
   subsets: ['latin'],
@@ -43,7 +44,8 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${playfair.variable} ${spaceMono.variable}`}>
-      <body>{children}</body>
+      <body>
+        <ServiceWorkerRegistration />{children}</body>
     </html>
   )
 }
