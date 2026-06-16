@@ -6,6 +6,7 @@ export interface Profile {
   verified: boolean
   messageCount: number
   createdAt: Timestamp | null
+  blocked?: boolean
 }
 
 export interface Message {
