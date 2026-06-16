@@ -7,8 +7,8 @@ export const dynamic = 'force-dynamic'
 /**
  * POST /api/admin/bootstrap
  * Body: { masterKey }
- * Sets admin:true claim on the authenticated user.
- * No existing admin required — use ONCE to bootstrap.
+ * Sets { admin: true, superAdmin: true } on the authenticated user.
+ * Use ONCE to bootstrap the owner account.
  */
 export async function POST(req: NextRequest) {
   try {
@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'WRONG_MASTER_KEY' }, { status: 403 })
     }
 
-    await getAdminAuth().setCustomUserClaims(decoded.uid, { admin: true })
+    await getAdminAuth().setCustomUserClaims(decoded.uid, { admin: true, superAdmin: true })
     return NextResponse.json({ ok: true, uid: decoded.uid })
   } catch (err) {
     console.error('[admin/bootstrap]', err)
