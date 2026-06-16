@@ -41,18 +41,16 @@ export async function POST(req: NextRequest) {
     displayName = pd.displayName ?? ''
     verified = pd.verified ?? false
 
-    if ((pd.messageCount ?? 0) >= 1) {
-      return NextResponse.json({ error: 'Already posted' }, { status: 409 })
-    }
-
+    // Find next sequential available slot (1 → 100)
     const messagesSnap = await db.collection('messages').get()
     const takenSlots = new Set(messagesSnap.docs.map(d => d.data().slotNumber as number))
-    const available: number[] = []
-    for (let i = 1; i <= 100; i++) { if (!takenSlots.has(i)) available.push(i) }
-    if (available.length === 0) {
+    let slotNumber = 0
+    for (let i = 1; i <= 100; i++) {
+      if (!takenSlots.has(i)) { slotNumber = i; break }
+    }
+    if (slotNumber === 0) {
       return NextResponse.json({ error: 'No slots available' }, { status: 409 })
     }
-    const slotNumber = available[Math.floor(Math.random() * available.length)]
 
     const msgRef = db.collection('messages').doc()
     await db.runTransaction(async tx => {
