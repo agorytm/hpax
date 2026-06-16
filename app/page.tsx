@@ -47,7 +47,7 @@ export default function HomePage() {
     const unsub = onAuthStateChanged(auth, async fireUser => {
       setFirebaseUser(fireUser)
       if (!fireUser) {
-        const q = query(collection(db, 'messages'), orderBy('slotNumber', 'asc'), limit(20))
+        const q = query(collection(db, 'messages'), orderBy('createdAt', 'desc'), limit(20))
         const snap = await getDocs(q)
         setMessages(snap.docs.map(d => toMessage(d.id, d.data())))
         setAppState('public')
@@ -66,7 +66,7 @@ export default function HomePage() {
 
   useEffect(() => {
     if (appState !== 'app') return
-    const q = query(collection(db, 'messages'), orderBy('slotNumber', 'asc'), limit(50))
+    const q = query(collection(db, 'messages'), orderBy('createdAt', 'desc'), limit(50))
     return onSnapshot(q, snap => setMessages(snap.docs.map(d => toMessage(d.id, d.data()))))
   }, [appState])
 
